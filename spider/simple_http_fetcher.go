@@ -54,17 +54,24 @@ func enumerateLinks(contextURL *url.URL, r io.Reader) ([]*url.URL, error) {
 
 	aElements := doc.Find("a")
 
-	urls := make([]*url.URL, aElements.Length())
-	for i := range urls {
+	urls := make([]*url.URL, 0, aElements.Length())
+
+	for i := 0; i < aElements.Length(); i++ {
 		node := aElements.Get(i)
-		if href := hrefAttrValue(node); href != "" {
-			parsed, err := contextURL.Parse(href)
-			if err == nil && (parsed.Scheme == "http" || parsed.Scheme == "https") {
-				// TODO: stop introducing nulls here
-				parsed.Fragment = ""
-				urls[i] = parsed
-			}
+
+		href := hrefAttrValue(node)
+		if href == "" {
+			continue
 		}
+
+		parsed, err := contextURL.Parse(href)
+		if err != nil || !(parsed.Scheme == "http" || parsed.Scheme == "https") {
+			continue
+		}
+		// Ignore the part of the URL after the "#"
+		parsed.Fragment = ""
+
+		urls = append(urls, parsed)
 	}
 	return urls, nil
 }
