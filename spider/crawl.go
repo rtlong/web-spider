@@ -15,6 +15,10 @@ var (
 	client = &http.Client{}
 )
 
+type Fetcher interface {
+	Fetch(*Job) *Result
+}
+
 type Spider struct {
 	Fetcher     Fetcher
 	Results     chan *Result
@@ -26,6 +30,15 @@ type Spider struct {
 	wg          sync.WaitGroup
 	mx          sync.Mutex
 	initialized bool
+}
+
+func (s *Spider) Crawl(startURL *url.URL) {
+	s.init()
+
+	s.wg.Add(1)
+	go s._crawl(&Job{URL: *startURL, Method: MethodGET}, s.MaxDepth)
+
+	s.wg.Wait()
 }
 
 func (s *Spider) init() {
@@ -44,15 +57,6 @@ func (s *Spider) init() {
 
 	s.initialized = true
 	return
-}
-
-func (s *Spider) Crawl(startURL *url.URL) {
-	s.init()
-
-	s.wg.Add(1)
-	go s._crawl(&Job{URL: *startURL, Method: MethodGET}, s.MaxDepth)
-
-	s.wg.Wait()
 }
 
 func (s *Spider) _crawl(job *Job, depth int) {
@@ -86,8 +90,4 @@ func (s *Spider) _crawl(job *Job, depth int) {
 	s.mx.Unlock()
 
 	s.Results <- result
-}
-
-type Fetcher interface {
-	Fetch(*Job) *Result
 }
