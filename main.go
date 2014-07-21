@@ -14,6 +14,7 @@ var (
 	concurrency = flag.Int("c", 100, "Max number of simultaneous open connections")
 	jsonOutput  = flag.Bool("j", false, "Dump output as JSON to get much more information that the default summary output")
 	depth       = flag.Int("d", 20, "Maximum depth of spidering (-1 indicates no limit)")
+	redundancy  = flag.Int("r", 1, "Max number of fetches per URL")
 	seedURL     url.URL
 	logger      Logger
 )
@@ -37,17 +38,19 @@ func main() {
 
 	results := make(chan *spider.Result)
 
-	go logResults(results)
-
 	s := spider.Spider{
 		Fetcher:     spider.SimpleHTMLFetcher{},
 		Results:     results,
 		MaxDepth:    *depth,
 		Concurrency: *concurrency,
-		Redundancy:  1,
+		Redundancy:  *redundancy,
 	}
-	s.Crawl(seedURL)
-	close(s.Results)
+	go func() {
+		s.Crawl(seedURL)
+		close(s.Results)
+	}()
+
+	logResults(results)
 }
 
 func logResults(results <-chan *spider.Result) {
