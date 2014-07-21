@@ -15,6 +15,7 @@ var (
 	jsonOutput  = flag.Bool("j", false, "Dump output as JSON to get much more information that the default summary output")
 	depth       = flag.Int("d", 20, "Maximum depth of spidering (-1 indicates no limit)")
 	redundancy  = flag.Int("r", 1, "Max number of fetches per URL")
+	maxURLs     = flag.Int("m", 200000, "Max number of unique URLs to request")
 	seedURL     url.URL
 	logger      Logger
 )
@@ -44,7 +45,9 @@ func main() {
 		MaxDepth:    *depth,
 		Concurrency: *concurrency,
 		Redundancy:  *redundancy,
+		MaxURLs:     *maxURLs,
 	}
+
 	go func() {
 		s.Crawl(seedURL)
 		close(s.Results)

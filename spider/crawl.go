@@ -25,6 +25,7 @@ type Spider struct {
 	MaxDepth    int
 	Redundancy  int
 	Concurrency int
+	MaxURLs     int
 	sem         chan bool
 	urlMap      map[string]int
 	wg          sync.WaitGroup
@@ -81,6 +82,9 @@ func (s *Spider) _crawl(job *Job, depth int) {
 		s.mx.Lock()
 		for _, link := range result.Links {
 			if job.URL.Host != link.Host {
+				continue
+			}
+			if len(s.urlMap) >= s.MaxURLs {
 				continue
 			}
 			count := s.urlMap[link.String()]
