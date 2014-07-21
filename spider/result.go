@@ -2,7 +2,6 @@ package spider
 
 import (
 	"net/http"
-	"net/url"
 	"time"
 )
 
@@ -12,7 +11,6 @@ type Result struct {
 	Time            time.Time
 	RequestDuration time.Duration
 	Error           Error
-	Links           []*url.URL
 }
 
 func (r *Result) RecordStart() {

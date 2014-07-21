@@ -3,6 +3,7 @@ package main
 import (
 	"flag"
 	"fmt"
+	"time"
 
 	"net/url"
 	"os"
@@ -16,6 +17,7 @@ var (
 	depth       = flag.Int("d", 20, "Maximum depth of spidering (-1 indicates no limit)")
 	redundancy  = flag.Int("r", 1, "Max number of fetches per URL")
 	maxURLs     = flag.Int("m", 200000, "Max number of unique URLs to request")
+	timeout     = flag.Duration("t", time.Second*20, "Timeout for any request")
 	seedURL     url.URL
 	logger      Logger
 )
@@ -40,12 +42,17 @@ func main() {
 	results := make(chan *spider.Result)
 
 	s := spider.Spider{
-		Fetcher:     spider.SimpleHTMLFetcher{},
+		Fetcher: &spider.SimpleHTMLFetcher{
+			Timeout: *timeout,
+		},
 		Results:     results,
 		MaxDepth:    *depth,
 		Concurrency: *concurrency,
 		Redundancy:  *redundancy,
 		MaxURLs:     *maxURLs,
+		LinkFilterFunc: func(l spider.Link) bool {
+			return l.URL.Host == seedURL.Host
+		},
 	}
 
 	go func() {

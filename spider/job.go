@@ -8,6 +8,7 @@ import (
 type Job struct {
 	URL    url.URL
 	Method string
+	Depth  int
 }
 
 func (j Job) String() string {

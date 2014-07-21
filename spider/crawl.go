@@ -1,7 +1,6 @@
 package spider
 
 import (
-	"net/http"
 	"net/url"
 	"sync"
 )
@@ -11,35 +10,67 @@ const (
 	MethodHEAD = "HEAD"
 )
 
-var (
-	client = &http.Client{}
-)
-
 type Fetcher interface {
-	Fetch(*Job) *Result
+	Fetch(*Job, chan<- Link) *Result
+}
+
+// A discovered outgoing link from a fetched HTML page
+type Link struct {
+	URL *url.URL
+	Job *Job // Fetch job from which this link was found
 }
 
 type Spider struct {
-	Fetcher     Fetcher
-	Results     chan *Result
-	MaxDepth    int
-	Redundancy  int
-	Concurrency int
-	MaxURLs     int
-	sem         chan bool
-	urlMap      map[string]int
-	wg          sync.WaitGroup
-	mx          sync.Mutex
-	initialized bool
+	Fetcher        Fetcher
+	Results        chan *Result
+	MaxDepth       int
+	Redundancy     int
+	Concurrency    int
+	MaxURLs        int
+	LinkFilterFunc func(Link) bool
+	sem            chan bool
+	urlMap         map[string]int
+	wg             sync.WaitGroup
+	mx             sync.Mutex
+	initialized    bool
 }
 
 func (s *Spider) Crawl(startURL *url.URL) {
 	s.init()
 
 	s.wg.Add(1)
-	go s._crawl(&Job{URL: *startURL, Method: MethodGET}, s.MaxDepth)
+	go s.fetch(&Job{URL: *startURL, Method: MethodGET, Depth: s.MaxDepth})
 
 	s.wg.Wait()
+}
+
+func (s *Spider) enqueue(links chan Link, done chan bool) {
+	for link := range links {
+		if len(s.urlMap) >= s.MaxURLs {
+			continue
+		}
+
+		if s.LinkFilterFunc != nil && !s.LinkFilterFunc(link) {
+			continue
+		}
+
+		s.mx.Lock()
+		count := s.urlMap[link.URL.String()]
+		s.mx.Unlock()
+
+		if s.Redundancy > 0 && count >= s.Redundancy {
+			continue
+		}
+
+		var method = MethodGET
+		if count > 0 {
+			method = MethodHEAD
+		}
+
+		s.wg.Add(1)
+		go s.fetch(&Job{URL: *link.URL, Method: method, Depth: link.Job.Depth - 1})
+	}
+	done <- true
 }
 
 func (s *Spider) init() {
@@ -57,10 +88,9 @@ func (s *Spider) init() {
 	s.mx = sync.Mutex{}
 
 	s.initialized = true
-	return
 }
 
-func (s *Spider) _crawl(job *Job, depth int) {
+func (s *Spider) fetch(job *Job) {
 	defer s.wg.Done()
 
 	s.mx.Lock()
@@ -73,33 +103,17 @@ func (s *Spider) _crawl(job *Job, depth int) {
 		return
 	}
 
+	links := make(chan Link)
+	enqueueDone := make(chan bool)
+	go s.enqueue(links, enqueueDone)
+
 	// Throttled by the semaphore, fetch
 	<-s.sem
-	result := s.Fetcher.Fetch(job)
+	result := s.Fetcher.Fetch(job, links)
 	s.sem <- true
 
-	if job.Method == MethodGET && depth != 0 {
-		s.mx.Lock()
-		for _, link := range result.Links {
-			if job.URL.Host != link.Host {
-				continue
-			}
-			if len(s.urlMap) >= s.MaxURLs {
-				continue
-			}
-			count := s.urlMap[link.String()]
-			if s.Redundancy > 0 && count >= s.Redundancy {
-				continue
-			}
-			var method = MethodGET
-			if count > 0 {
-				method = MethodHEAD
-			}
-			s.wg.Add(1)
-			go s._crawl(&Job{URL: *link, Method: method}, depth-1)
-		}
-		s.mx.Unlock()
-	}
-
 	s.Results <- result
+
+	// Wait until enqueue is done
+	<-enqueueDone
 }
