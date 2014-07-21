@@ -22,12 +22,8 @@ stats about the response, but not necessarily saving the response itself.
 ## TODO
 
 - check `<link>`, `<img>`, `<script>`, and `<iframe>` tag hrefs in addition to `<a>`
-- use channels during the parsing/link-processing step to send URLs back to the Spider instance
-- handle fetching non-HTML resources and not attempting to parse as HTML
 - ensure `href="//blah.com/foo"` urls are not ignored due to `URL.Scheme` assertion
 - add tests!
 - improve output
 - add more configurability:
-    - ability to configure Hostname stickiness (in varying levels, by (sub-)domain part)
-    - ability to filter URLs with a regex or function call
     - ability to add extra headers during requests
