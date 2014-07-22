@@ -24,7 +24,7 @@ func (l *PlaintextLogger) PrintResult(r *spider.Result) {
 	if r.Error.Error != nil {
 		l.Log.Printf("| ERR %s: %s\n", r.Job, r.Error.String())
 	} else {
-		ms := int64(r.RequestDuration / time.Millisecond)
+		ms := int64(r.Duration / time.Millisecond)
 		l.Log.Printf("| %3d %s [%dms]\n", r.Response.StatusCode, r.Job.String(), ms)
 	}
 }

@@ -6,11 +6,11 @@ import (
 )
 
 type Result struct {
-	Job             Job
-	Response        *http.Response
-	Time            time.Time
-	RequestDuration time.Duration
-	Error           Error
+	Job      Job
+	Response *http.Response
+	Time     time.Time
+	Duration time.Duration
+	Error    Error
 }
 
 func (r *Result) RecordStart() {
@@ -18,5 +18,5 @@ func (r *Result) RecordStart() {
 }
 
 func (r *Result) RecordEnd() {
-	r.RequestDuration = time.Since(r.Time)
+	r.Duration = time.Since(r.Time)
 }
