@@ -37,12 +37,28 @@ func (l *PlaintextLogger) SetOutput(w io.Writer) {
 	l.Log = log.New(os.Stdout, "", log.Ldate|log.Lmicroseconds)
 }
 
+type JSONEvent struct {
+	Time           time.Time
+	Method         string
+	URL            string
+	ResponseStatus int
+	Duration       time.Duration
+	Result         *spider.Result
+}
+
 type JSONLogger struct {
 	Encoder *json.Encoder
 }
 
 func (l JSONLogger) PrintResult(r *spider.Result) {
-	err := l.Encoder.Encode(r)
+	err := l.Encoder.Encode(JSONEvent{
+		Method:         r.Job.Method,
+		URL:            r.Job.URL.String(),
+		ResponseStatus: r.Response.StatusCode,
+		Duration:       r.Duration,
+		Time:           r.Time,
+		Result:         r,
+	})
 	if err != nil {
 		log.Fatal(err)
 	}
